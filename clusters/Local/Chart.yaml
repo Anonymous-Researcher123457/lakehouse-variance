@@ -1,0 +1,6 @@
+apiVersion: v2
+name: Trino-Helm-Chart
+description: A Helm chart for deploying a Trino-Iceberg-Hive lakehouse on local Kubernetes deployments.
+type: application
+version: 0.1.0
+appVersion: "1.16.0"

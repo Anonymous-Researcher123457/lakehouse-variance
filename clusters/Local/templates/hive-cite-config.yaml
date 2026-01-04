@@ -1,0 +1,92 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hive-site-config-{{ .Values.instanceName }}
+  namespace: {{ .Values.namespace }}
+data:
+  hive-site.xml: |
+    <configuration>
+      <property>
+        <name>javax.jdo.option.ConnectionURL</name>
+        <value>jdbc:postgresql://localhost:5432/metastore</value>
+        <description>PostgreSQL DB for Hive Metastore</description>
+      </property>
+
+      <property>
+        <name>javax.jdo.option.ConnectionDriverName</name>
+        <value>org.postgresql.Driver</value>
+      </property>
+
+      <property>
+        <name>javax.jdo.option.ConnectionUserName</name>
+        <value>hive</value>
+      </property>
+
+      <property>
+        <name>javax.jdo.option.ConnectionPassword</name>
+        <value>hivepass</value>
+      </property>
+
+      <property>
+        <name>datanucleus.autoCreateSchema</name>
+        <value>true</value>
+      </property>
+
+      <property>
+        <name>hive.metastore.warehouse.dir</name>
+        <value>/mnt/iceberg/warehouse</value>
+        <description>Location of the Hive warehouse</description>
+      </property>
+
+      <property>
+        <name>hive.metastore.uris</name>
+        <value>thrift://0.0.0.0:9083</value>
+        <description>Thrift URI for the Metastore</description>
+      </property>
+
+      <property>
+        <name>write.location-provider.impl</name>
+        <value>org.apache.iceberg.hadoop.HadoopLocationProvider</value>
+      </property>
+
+      <property>
+        <name>fs.defaultFS</name>
+        <value>file:///</value>
+      </property>
+
+      <property>
+        <name>hive.exec.scratchdir</name>
+        <value>file:///mnt/iceberg/warehouse/tmp/hive</value>
+      </property>
+
+      <property>
+        <name>hive.exec.local.scratchdir</name>
+        <value>/mnt/iceberg/warehouse/tmp/hive</value>
+      </property>
+
+      <property>
+        <name>hive.downloaded.resources.dir</name>
+        <value>/mnt/iceberg/warehouse/tmp/hive/resources</value>
+      </property>
+
+      <property>
+        <name>hive.llap.object.cache.enabled</name>
+        <value>false</value>
+      </property>
+
+      <property>
+        <name>hive.metastore.client.cache.v2.enabled</name>
+        <value>false</value>
+      </property>
+
+      <property>
+        <name>datanucleus.cache.level2.type</name>
+        <value>none</value>
+      </property>
+
+      <property>
+        <name>metastore.cached.rawstore.cached.object.blacklist</name>
+        <value>.*</value>
+      </property>
+
+    </configuration>

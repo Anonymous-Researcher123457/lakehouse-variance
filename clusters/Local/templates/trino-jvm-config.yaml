@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: trino-jvm-config
+  namespace: {{ .Values.namespace }}
+data:
+  jvm.config: |
+    -server
+    -javaagent:/opt/jmx_exporter/jmx_prometheus_javaagent.jar=7071:/etc/jmx-exporter-config.yml
+    -agentpath:/usr/lib/trino/bin/libjvmkill.so
+    -XX:InitialRAMPercentage=85
+    -XX:MaxRAMPercentage=85
+    -XX:+ExplicitGCInvokesConcurrent
+    -XX:-HeapDumpOnOutOfMemoryError
+    -XX:+ExitOnOutOfMemoryError
+    -XX:-OmitStackTraceInFastThrow
+    -Djdk.attach.allowAttachSelf=true
+    -Dfile.encoding=UTF-8
+    -XX:+EnableDynamicAgentLoading
+    -Djava.security.manager=allow
+    -XX:ActiveProcessorCount=1

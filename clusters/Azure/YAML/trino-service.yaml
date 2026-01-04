@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: trino-service
+  labels:
+    service-app: trino
+spec:
+  selector:
+    pod: trino-pod
+  ports:
+    - name: trino-coord
+      protocol: TCP
+      port: 8080
+      targetPort: 8080
+    - name: metrics
+      protocol: TCP
+      port: 9090
+      targetPort: 9090

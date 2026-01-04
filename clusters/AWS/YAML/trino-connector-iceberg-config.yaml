@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: trino-iceberg-config
+data:
+  iceberg.properties: |
+    connector.name=iceberg
+    hive.metastore.uri=thrift://hive-metastore:9083
+    iceberg.catalog.type=hive_metastore
+    iceberg.file-format=PARQUET
+    s3.region=<REGION>
+    s3.endpoint=https://s3.<REIGON>.amazonaws.com
+    s3.aws-access-key=<YOUR_AWS_ACCESS_KEY_ID>
+    s3.aws-secret-key=<YOUR_AWS_SECRET_ACCESS_KEY>
+    fs.native-s3.enabled=true
+    iceberg.metadata-cache.enabled=false
+    iceberg.register-table-procedure.enabled=true
+    iceberg.allowed-extra-properties=*
+    iceberg.extended-statistics.enabled=true

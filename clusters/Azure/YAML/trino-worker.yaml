@@ -1,0 +1,65 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: trino-worker
+spec:
+  serviceName: trino-worker-headless
+  replicas: 4
+  selector:
+    matchLabels:
+      app: trino-worker
+  template:
+    metadata:
+      labels:
+        app: trino-worker
+    spec:
+      nodeSelector:
+        pod: "worker"
+        role: "worker"
+      serviceAccountName: trino
+      priority: 0
+      schedulerName: default-scheduler
+      enableServiceLinks: true
+      terminationGracePeriodSeconds: 30
+      preemptionPolicy: PreemptLowerPriority
+      securityContext:
+        seLinuxOptions:
+          level: 's0:c29,c14'
+        runAsUser: 0
+      containers:
+        - name: app-container
+          image: <YOUR_TRINO_IMAGE:TAG>
+          command: ["/bin/sh", "-c", "cd /lib/trino/bin && ./run-trino"]  
+          ports:
+            - containerPort: 8080
+              protocol: TCP
+            - containerPort: 9189
+              protocol: TCP
+            - containerPort: 9090
+              protocol: TCP
+          securityContext:
+            capabilities:
+              drop:
+                - MKNOD
+          imagePullPolicy: IfNotPresent
+          resources:
+          volumeMounts:
+            - name: trino-iceberg-config
+              mountPath: /etc/trino/catalog/iceberg.properties
+              subPath: iceberg.properties
+            - name: trino-worker-config
+              mountPath: /etc/trino/config.properties
+              subPath: config.properties
+            - name: trino-jvm-config
+              mountPath: /etc/trino/jvm.config
+              subPath: jvm.config
+      volumes:
+        - name: trino-iceberg-config
+          configMap:
+            name: trino-iceberg-config
+        - name: trino-worker-config
+          configMap:
+            name: trino-worker-config
+        - name: trino-jvm-config
+          configMap:
+            name: trino-jvm-config

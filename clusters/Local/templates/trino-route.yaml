@@ -1,0 +1,14 @@
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: trino-route-{{ .Values.instanceName }}
+spec:
+{{- if .Values.route.host }}
+  host: {{ .Values.route.host | quote }}
+{{- end }}
+  to:
+    kind: Service
+    name: trino-service-{{ .Values.instanceName }}
+    weight: 100
+  port:
+    targetPort: 8080

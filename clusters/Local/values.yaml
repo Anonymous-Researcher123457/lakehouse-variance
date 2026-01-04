@@ -1,0 +1,74 @@
+instanceName: lakehouse-a # Name of deployed lakehouse.
+
+namespace: "YOUR_K8_NAMESPACE"
+
+route:
+  enabled: true
+  # Leave empty to let OpenShift auto-generate the hostname
+  host: ""
+
+trino:
+  serviceAccountName: "YOUR_SERVICE_ACCOUNT"
+
+  nodeExplorer:
+    image: quay.io/prometheus/node-exporter:v1.8.1
+  pod:
+    image: "YOUR_TRINO_IMAGE:TAG" # Trino image created from docker/trino.
+  worker:
+    resources:
+      cpu: "4"
+      memory: "64Gi"
+    replicasPerNode: 1
+    count: 4
+    # Optional: pin Trino Workers to specific nodes (leave empty for random scheduling).
+    nodes:
+      - ""
+      - ""
+      - ""
+      - ""
+  coord:
+    resources:
+      cpu: "4"
+      memory: "64Gi"
+    nodeName: ""   # Optional: pin Trino Coordinator to a specific node (leave empty for random scheduling).
+
+client:
+  enabled: true
+  image: "YOUR_CLIENT_IMAGE:TAG" # Trino image created from docker/trino-client.
+  serviceAccountName: "YOUR_SERVICE_ACCOUNT"
+  imagePullSecret: ""
+  resources:
+    requests:
+      cpu: "2"
+      memory: "16Gi"
+    limits:
+      cpu: "2"
+      memory: "16Gi"
+
+metastore:
+  serviceAccountName: "YOUR_SERVICE_ACCOUNT"
+  nodeName: "" # Optional: pin Hive Metastore to a specific node (leave empty for random scheduling).
+  hive:
+    pod:
+      image: bde2020/hive:latest
+    resources:
+      requests:
+        cpu: "1"
+        memory: "2Gi"
+      limits:
+        cpu: "1"
+        memory: "2Gi"
+  postgres:
+    pod:
+      image: postgres:13
+    requests:
+      cpu: "1"
+      memory: "2Gi"
+    limits:
+      cpu: "1"
+      memory: "2Gi"
+    
+pvc:
+  iceberg: # NOTE: Lakehouse data should exist at /mnt/iceberg/warehouse/<Schema>/<Tables>
+    name: "NAME_OF_YOUR_PVC" # Assumed to exist prior to launch of lakehouse
+    path: /mnt/iceberg # Root Dir where Iceberg Warehouse is located.

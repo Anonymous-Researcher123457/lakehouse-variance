@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: hive-metastore-{{ .Values.instanceName }}
+  namespace: {{ .Values.namespace }}
+spec:
+  selector:
+    app: hive-pod-{{ .Values.instanceName }}
+  ports:
+    - protocol: TCP
+      port: 9083
+      targetPort: 9083

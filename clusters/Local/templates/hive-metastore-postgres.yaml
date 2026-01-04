@@ -1,0 +1,72 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: hive-metastore-postgres-{{ .Values.instanceName }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: hive-pod-{{ .Values.instanceName }}
+spec:
+  {{- if .Values.metastore.nodeName }}
+  nodeName: {{ .Values.metastore.nodeName | quote }}
+  {{- end }}
+
+  serviceAccountName: {{ .Values.metastore.serviceAccountName | default "containerroot" | quote }}
+
+  containers:
+    - name: hive-metastore
+      image: {{ .Values.metastore.hive.pod.image | quote }}
+      env:
+        - name: METASTORE_LISTEN_HOST
+          value: "0.0.0.0"
+        - name: METASTORE_PORT
+          value: "9083"
+      ports:
+        - containerPort: 9083
+      command: ["/bin/bash", "-c"]
+      args:
+        - |
+          schematool -initSchema -dbType postgres && \
+          hive --service metastore
+      volumeMounts:
+        - name: hive-site-config-{{ .Values.instanceName }}
+          mountPath: /opt/hive/conf
+        - name: {{ .Values.pvc.iceberg.name }}
+          mountPath: {{ .Values.pvc.iceberg.path | quote }}
+      securityContext:
+        capabilities:
+          drop:
+            - MKNOD
+      {{- if .Values.metastore.hive.resources }}
+      resources:
+        {{- toYaml .Values.metastore.hive.resources | nindent 8 }}
+      {{- end }}
+      imagePullPolicy: IfNotPresent
+
+    - name: postgres
+      image: {{ .Values.metastore.postgres.pod.image | quote }}
+      env:
+        - name: POSTGRES_DB
+          value: metastore
+        - name: POSTGRES_USER
+          value: hive
+        - name: POSTGRES_PASSWORD
+          value: hivepass
+      volumeMounts:
+        - name: {{ .Values.pvc.iceberg.name }}
+          mountPath: /mnt/iceberg
+      securityContext:
+        capabilities:
+          drop:
+            - MKNOD
+      {{- if .Values.metastore.postgres.resources }}
+      resources:
+        {{- toYaml .Values.metastore.postgres.resources | nindent 8 }}
+      {{- end }}
+
+  volumes:
+    - name: {{ .Values.pvc.iceberg.name }}
+      persistentVolumeClaim:
+        claimName: {{ .Values.pvc.iceberg.name }}
+    - name: hive-site-config-{{ .Values.instanceName }}
+      configMap:
+        name: hive-site-config-{{ .Values.instanceName }}

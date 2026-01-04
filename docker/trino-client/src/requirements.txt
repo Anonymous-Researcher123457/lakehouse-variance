@@ -1,0 +1,9 @@
+trino
+argparse
+requests
+pathlib
+datetime
+fsspec
+adlfs
+s3fs
+gcsfs

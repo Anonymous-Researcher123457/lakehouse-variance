@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: trino-worker-service-{{ .Values.instanceName }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    service-app: trino-{{ .Values.instanceName }}
+spec:
+  clusterIP: None
+  selector:
+    app: trino-worker-{{ .Values.instanceName }}
+  ports:
+    - name: trino-worker
+      protocol: TCP
+      port: 8080
+      targetPort: 8080
+    - name: metrics
+      protocol: TCP
+      port: 9090
+      targetPort: 9090
+

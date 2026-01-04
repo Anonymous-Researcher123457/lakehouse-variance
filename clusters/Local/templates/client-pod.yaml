@@ -1,0 +1,38 @@
+{{- if .Values.client.enabled }}
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ printf "client-%s" .Values.instanceName | trunc 63 | trimSuffix "-" }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    app.kubernetes.io/name: trino-client
+    app.kubernetes.io/instance: {{ .Values.instanceName | quote }}
+spec:
+  {{- if .Values.client.serviceAccountName }}
+  serviceAccountName: {{ .Values.client.serviceAccountName | quote }}
+  {{- end }}
+
+  {{- if .Values.client.imagePullSecret }}
+  imagePullSecrets:
+    - name: {{ .Values.client.imagePullSecret | quote }}
+  {{- end }}
+
+  containers:
+    - name: trino-client
+      image: {{ .Values.client.image | quote }}
+      command: ["/bin/sh", "-c", "tail -f /dev/null"]
+      volumeMounts:
+        - name: iceberg
+          mountPath: {{ .Values.pvc.iceberg.path | quote }}
+      resources:
+        {{- toYaml .Values.client.resources | nindent 8 }}
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop: ["ALL"]
+
+  volumes:
+    - name: iceberg
+      persistentVolumeClaim:
+        claimName: {{ .Values.pvc.iceberg.name | quote }}
+{{- end }}

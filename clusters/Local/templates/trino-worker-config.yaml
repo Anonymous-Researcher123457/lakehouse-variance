@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: trino-worker-config-{{ .Values.instanceName }}
+  namespace: {{ .Values.namespace }}
+data:
+  config.properties: |
+    
+    #single node install config
+    coordinator=false
+    node-scheduler.include-coordinator=false
+    http-server.http.port=8080
+    discovery.uri=http://trino-service-{{ .Values.instanceName }}.{{ .Values.namespace }}.svc.cluster.local:8080
+    node.environment=test
+    spiller-spill-path=/mnt/iceberg/spill
+    spill-enabled=true
+    query.remote-task.max-error-duration=5m
+    exchange.max-buffer-size=256MB
+    query.max-memory=120GB
+    task.max-worker-threads=16
+    exchange.http-client.request-timeout=10m
+    exchange.http-client.idle-timeout=10m

@@ -1,0 +1,129 @@
+{{- $root := . -}}
+{{- $count := ($root.Values.trino.worker.count | default 0 | int) -}}
+{{- $nodes := ($root.Values.trino.worker.nodes | default (list)) -}}
+
+{{- range $index, $_ := until $count }}
+{{- $nodeName := "" -}}
+{{- if lt $index (len $nodes) -}}
+{{- $nodeName = (index $nodes $index) -}}
+{{- end }}
+
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: trino-worker-{{ $root.Values.instanceName }}-{{ $index }}
+  namespace: {{ $root.Values.namespace }}
+spec:
+  serviceName: trino-worker-headless-{{ $root.Values.instanceName }}
+  replicas: {{ $root.Values.trino.worker.replicasPerNode }}
+  selector:
+    matchLabels:
+      app: trino-worker-{{ $root.Values.instanceName }}
+      statefulsetSelector: trino-worker-{{ $root.Values.instanceName }}-{{ $index }}
+  template:
+    metadata:
+      labels:
+        app: trino-worker-{{ $root.Values.instanceName }}
+        statefulsetSelector: trino-worker-{{ $root.Values.instanceName }}-{{ $index }}
+    spec:
+      {{- if $nodeName }}
+      nodeName: {{ $nodeName | quote }}
+      {{- end }}
+
+      serviceAccountName: {{ $root.Values.trino.serviceAccountName | quote }}
+
+      containers:
+        - name: node-exporter
+          image: {{ $root.Values.trino.nodeExporter.image | quote }}
+          args:
+            - --path.procfs=/proc
+            - --path.sysfs=/sys
+            - --path.rootfs=/host
+            - --collector.filesystem.ignored-mount-points=^/(sys|proc|dev|host|etc)($|/)
+          ports:
+            - containerPort: 9100
+          securityContext:
+            capabilities:
+              drop:
+                - MKNOD
+
+        - name: trino-worker
+          image: {{ $root.Values.trino.pod.image | quote }}
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+          command:
+            - /bin/sh
+            - -c
+            - |
+              echo "node.internal-address=${POD_IP}" >> /etc/trino/node.properties
+              exec /lib/trino/bin/run-trino &
+              /mnt/primary/Mini-project/Apache/System/Probe/trino_probe.sh "{{ $root.Values.instanceName }}" "$POD_NAME"
+          ports:
+            - { containerPort: 7071, protocol: TCP }
+            - { containerPort: 8080, protocol: TCP }
+            - { containerPort: 9189, protocol: TCP }
+            - { containerPort: 9090, protocol: TCP }
+            - { containerPort: 9101, protocol: TCP }
+            - { containerPort: 9102, protocol: TCP }
+            - { containerPort: 9103, protocol: TCP }
+            - { containerPort: 9104, protocol: TCP }
+          securityContext:
+            capabilities:
+              drop:
+                - MKNOD
+          imagePullPolicy: IfNotPresent
+          resources:
+            requests:
+              cpu: {{ $root.Values.trino.worker.resources.cpu | quote }}
+              memory: {{ $root.Values.trino.worker.resources.memory | quote }}
+            limits:
+              cpu: {{ $root.Values.trino.worker.resources.cpu | quote }}
+              memory: {{ $root.Values.trino.worker.resources.memory | quote }}
+          volumeMounts:
+            - name: {{ $root.Values.pvc.iceberg.name }}
+              mountPath: {{ $root.Values.pvc.iceberg.path | quote }}
+            - name: trino-iceberg-config-{{ $root.Values.instanceName }}
+              mountPath: /etc/trino/catalog/iceberg.properties
+              subPath: iceberg.properties
+            - name: trino-worker-config-{{ $root.Values.instanceName }}
+              mountPath: /etc/trino/config.properties
+              subPath: config.properties
+            - name: trino-jvm-config
+              mountPath: /etc/trino/jvm.config
+              subPath: jvm.config
+            - name: trino-jmx-config
+              mountPath: /etc/jmx-exporter-config.yml
+              subPath: jmx-exporter-config.yml
+          livenessProbe:
+            httpGet:
+              path: /v1/info
+              port: 8080
+            initialDelaySeconds: 120
+            periodSeconds: 15
+            failureThreshold: 2
+
+      volumes:
+        - name: {{ $root.Values.pvc.iceberg.name }}
+          persistentVolumeClaim:
+            claimName: {{ $root.Values.pvc.iceberg.name }}
+        - name: trino-iceberg-config-{{ $root.Values.instanceName }}
+          configMap:
+            name: trino-iceberg-config-{{ $root.Values.instanceName }}
+        - name: trino-worker-config-{{ $root.Values.instanceName }}
+          configMap:
+            name: trino-worker-config-{{ $root.Values.instanceName }}
+        - name: trino-jvm-config
+          configMap:
+            name: trino-jvm-config
+        - name: trino-jmx-config
+          configMap:
+            name: trino-jmx-config
+---
+{{- end }}

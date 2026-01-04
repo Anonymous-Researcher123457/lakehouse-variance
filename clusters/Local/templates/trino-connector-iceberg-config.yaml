@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: trino-iceberg-config-{{ .Values.instanceName }}
+  namespace: {{ .Values.namespace }}
+data:
+  iceberg.properties: |
+    connector.name=iceberg
+    hive.metastore.uri=thrift://hive-metastore-{{ .Values.instanceName }}.{{ .Values.namespace }}.svc.cluster.local:9083
+    iceberg.catalog.type=hive_metastore
+    iceberg.file-format=PARQUET
+    fs.hadoop.enabled=true
+    fs.cache.enabled=false
+    iceberg.metadata-cache.enabled=false
+    iceberg.register-table-procedure.enabled=true
+    iceberg.allowed-extra-properties=*
+    iceberg.extended-statistics.enabled=true

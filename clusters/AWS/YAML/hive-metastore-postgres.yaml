@@ -1,0 +1,112 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: hive-metastore-postgres
+  labels:
+    app: hive-pod
+spec:
+  nodeSelector:
+    app: "app"
+    role: "hive"
+  tolerations:
+    - key: "role"
+      operator: "Equal"
+      value: "hive"
+      effect: "NoSchedule"
+  serviceAccountName: trino
+
+  initContainers:
+    - name: fetch-s3a-jars
+      image: curlimages/curl:8.8.0
+      env:
+        - name: HADOOP_VER
+          value: "2.7.4"
+        - name: AWS_SDK_BUNDLE_VER
+          value: "1.7.4"
+      command: [ "sh","-lc" ]
+      args:
+        - |
+          set -e
+          echo "Downloading hadoop-aws and aws-java-sdk-bundle..."
+          curl -fL "https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-aws/${HADOOP_VER}/hadoop-aws-${HADOOP_VER}.jar" -o /s3-jars/hadoop-aws.jar
+          curl -fL "https://repo1.maven.org/maven2/com/amazonaws/aws-java-sdk/${AWS_SDK_BUNDLE_VER}/aws-java-sdk-${AWS_SDK_BUNDLE_VER}.jar" -o /s3-jars/aws-java-sdk.jar
+      volumeMounts:
+        - name: s3a-jars
+          mountPath: /s3-jars
+
+  containers:
+    - name: hive-metastore
+      image: bde2020/hive:latest
+      env:
+        - name: METASTORE_LISTEN_HOST
+          value: "0.0.0.0"
+        - name: METASTORE_PORT
+          value: "9083"
+        # Make Hive see the S3A jars
+        - name: HIVE_AUX_JARS_PATH
+          value: /opt/hive/auxlib/*
+        - name: JAVA_TOOL_OPTIONS
+          value: "-Dcom.amazonaws.services.s3.enableV4=true -Dfs.s3a.endpoint=s3.eu-west-2.amazonaws.com -Dfs.s3a.path.style.access=false"
+      ports:
+        - containerPort: 9083
+      command: ["/bin/bash", "-c"]
+      args:
+        - |
+          set -e
+          # Place the jars where Hive loads aux jars
+          mkdir -p /opt/hive/auxlib
+          cp /s3-jars/*.jar /opt/hive/auxlib/
+
+          # (Optional) verify jars are visible
+          ls -l /opt/hive/auxlib
+
+          echo "Waiting for Postgres..."
+          for i in {1..60}; do
+            PGPASSWORD=hivepass psql -h localhost -U hive -d metastore -c "select 1" >/dev/null 2>&1 && break
+            sleep 2
+          done
+
+          if /opt/hive/bin/schematool -dbType postgres -info >/dev/null 2>&1; then
+            echo "Schema present; skipping init."
+          else
+            echo "Initializing Hive metastore schema..."
+            /opt/hive/bin/schematool -initSchema -dbType postgres -verbose
+          fi
+
+          exec hive --service metastore
+      volumeMounts:
+        - name: hive-site-config
+          mountPath: /opt/hive/conf
+        - name: core-site-config
+          mountPath: /opt/hadoop-2.7.4/etc/hadoop/core-site.xml
+          subPath: core-site.xml
+        - name: hms-warehouse
+          mountPath: /tmp/hive/warehouse
+        - name: s3a-jars
+          mountPath: /s3-jars
+      imagePullPolicy: IfNotPresent
+
+    - name: postgres
+      image: postgres:13
+      resources:
+        requests: { cpu: "500m", memory: "0.5Gi" }
+        limits:   { cpu: "500m", memory: "0.5Gi" }
+      env:
+        - name: POSTGRES_DB
+          value: metastore
+        - name: POSTGRES_USER
+          value: hive
+        - name: POSTGRES_PASSWORD
+          value: hivepass
+
+  volumes:
+    - name: hive-site-config
+      configMap:
+        name: hive-site-config
+    - name: core-site-config
+      configMap:
+        name: core-site-config
+    - name: hms-warehouse
+      emptyDir: {}
+    - name: s3a-jars
+      emptyDir: {}

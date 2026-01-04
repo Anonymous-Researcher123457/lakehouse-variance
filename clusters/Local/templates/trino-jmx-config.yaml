@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: trino-jmx-config
+  namespace: {{ .Values.namespace }}
+data:
+  jmx-exporter-config.yml: |
+    startDelaySeconds: 0
+    ssl: false
+    rules:
+      - pattern: '.*'

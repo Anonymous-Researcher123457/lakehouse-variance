@@ -1,0 +1,84 @@
+apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfig
+
+metadata:
+  name: ${CLUSTER_NAME}
+  region: ${REGION}
+  version: ${K8S_VERSION}
+
+availabilityZones:
+  - ${AVAILABILITY_ZONE}
+
+iam:
+  withOIDC: true
+  podIdentityAssociations:
+    - namespace: ${K8S_NAMESPACE}
+      serviceAccountName: ${TRINO_SERVICE_ACCOUNT}
+      roleARN: ${TRINO_POD_ROLE_ARN}
+
+vpc:
+  manageSharedNodeSecurityGroupRules: true
+
+managedNodeGroups:
+  # Admin pool - same as before
+  - name: admin-ng
+    instanceType: t3.small
+    availabilityZones: ["eu-west-2a"]
+    desiredCapacity: 2
+    minSize: 2
+    maxSize: 2
+    labels: { pool: admin }
+    ssh:
+      enableSsm: true
+
+  # Coordinator pool
+  - name: app-coord-ng
+    instanceType: t3a.xlarge
+    availabilityZones: ["eu-west-2a"]
+    desiredCapacity: 1
+    minSize: 1
+    maxSize: 1
+    labels: { app: app, role: coord }
+    taints:
+      - key: role
+        value: coord
+        effect: NoSchedule
+
+  - name: app-worker-ng
+    instanceType: r6i.2xlarge
+    availabilityZones: ["eu-west-2a"]
+    desiredCapacity: 4
+    minSize: 4
+    maxSize: 4
+    volumeSize: 100
+    labels: { app: app, role: worker }
+    taints:
+      - key: role
+        value: worker
+        effect: NoSchedule
+
+  - name: app-hive-ng
+    instanceType: t3.medium
+    availabilityZones: ["eu-west-2a"]
+    desiredCapacity: 1
+    minSize: 1
+    maxSize: 1
+    volumeSize: 100
+    labels: { app: app, role: hive }
+    taints:
+      - key: role
+        value: hive
+        effect: NoSchedule
+addons:
+  - name: vpc-cni
+    version: latest
+    wellKnownPolicies:
+      autoScaler: false
+  - name: kube-proxy
+    version: latest
+  - name: coredns
+    version: latest
+  - name: aws-ebs-csi-driver
+    version: latest
+  - name: eks-pod-identity-agent
+    version: latest

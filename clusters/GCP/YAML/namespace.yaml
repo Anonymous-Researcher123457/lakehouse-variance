@@ -1,0 +1,5 @@
+# namespace.yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: "YOUR_K8_NAMESPACE"

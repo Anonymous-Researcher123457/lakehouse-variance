@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: trino-jvm-config
+data:
+  jvm.config: |
+    -server
+    -agentpath:/usr/lib/trino/bin/libjvmkill.so
+    -XX:+ExplicitGCInvokesConcurrent
+    -XX:-HeapDumpOnOutOfMemoryError
+    -XX:+ExitOnOutOfMemoryError
+    -XX:-OmitStackTraceInFastThrow
+    -XX:PerMethodRecompilationCutoff=10000
+    -XX:PerBytecodeRecompilationCutoff=10000
+    -Djdk.attach.allowAttachSelf=true
+    -Dfile.encoding=UTF-8
+    -XX:+EnableDynamicAgentLoading
+    -Djava.security.manager=allow
+    -XX:ActiveProcessorCount=4
+    -XX:InitialRAMPercentage=85
+    -XX:MaxRAMPercentage=85
+    -XX:G1HeapRegionSize=32M

@@ -1,0 +1,110 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: hive-metastore-postgres
+  labels:
+    app: hive-pod
+spec:
+  tolerations:
+    - key: "node"
+      operator: "Equal"
+      value: "trino"
+      effect: "NoSchedule"
+  nodeSelector:
+    pod: "hive"
+  serviceAccountName: hive-sa
+  initContainers:
+    - name: fetch-gcs-connector
+      image: curlimages/curl:8.8.0
+      args:
+        - sh
+        - -lc
+        - >                    
+          curl -fL "https://repo1.maven.org/maven2/com/google/cloud/bigdataoss/gcs-connector/hadoop2-1.9.17/gcs-connector-hadoop2-1.9.17-shaded.jar" \
+            -o /gcs-conn/gcs-connector.jar
+      volumeMounts:
+        - name: gcs-connector
+          mountPath: /gcs-conn
+  containers:
+    - name: hive-metastore
+      image: bde2020/hive:latest
+      env:
+        - name: METASTORE_LISTEN_HOST
+          value: "0.0.0.0"
+        - name: METASTORE_PORT
+          value: "9083"
+        - name: HIVE_AUX_JARS_PATH
+          value: /opt/hive/auxlib/gcs-connector.jar
+      ports:
+        - containerPort: 9083
+      command: ["/bin/bash", "-c"]
+      args:
+          - |
+              set -e
+              cp /gcs-conn/gcs-connector.jar /opt/hive/lib/
+              echo "Waiting for Postgres..."
+              for i in {1..60}; do
+                PGPASSWORD=hivepass psql -h localhost -U hive -d metastore -c "select 1" >/dev/null 2>&1 && break
+                sleep 2
+              done
+              if /opt/hive/bin/schematool -dbType postgres -info >/dev/null 2>&1; then
+                echo "Schema present; skipping init."
+              else
+                echo "Initializing Hive metastore schema..."
+                /opt/hive/bin/schematool -initSchema -dbType postgres -verbose
+              fi
+              exec hive --service metastore
+      volumeMounts:
+        - name: hive-site-config
+          mountPath: /opt/hive/conf
+        - name: hms-warehouse
+          mountPath: /tmp/hive/warehouse
+        - name: gcs-connector
+          mountPath: /gcs-conn
+        - name: gcs-sa
+          mountPath: /secrets/gcp
+          readOnly: true
+      securityContext:
+        capabilities:
+          drop:
+            - MKNOD
+      imagePullPolicy: IfNotPresent
+      resources:
+        requests:
+          cpu: "500m"
+          memory: "0.5Gi"
+        limits:
+          cpu: "500m"
+          memory: "0.5Gi"
+
+    - name: postgres
+      image: postgres:13
+      resources:
+        requests:
+          cpu: "500m"
+          memory: "0.5Gi"
+        limits:
+          cpu: "500m"
+          memory: "0.5Gi"
+      env:
+        - name: POSTGRES_DB
+          value: metastore
+        - name: POSTGRES_USER
+          value: hive
+        - name: POSTGRES_PASSWORD
+          value: hivepass
+      securityContext:
+        capabilities:
+          drop:
+            - MKNOD
+  volumes:
+    - name: hive-site-config
+      configMap:
+        name: hive-site-config
+    - name: hms-warehouse
+      emptyDir: {}
+    - name: gcs-connector
+      emptyDir: {}
+    - name: gcs-sa
+      secret:
+        secretName: gcs-sa-key

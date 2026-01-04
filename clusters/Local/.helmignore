@@ -1,0 +1,24 @@
+.DS_Store
+.git/
+.gitignore
+.bzr/
+.bzrignore
+.hg/
+.hgignore
+.svn/
+*.swp
+*.bak
+*.tmp
+*.tgz
+*.orig
+*~
+# IDEs
+.project
+.idea/
+*.tmproj
+.vscode/
+rendered.yaml
+index.yaml
+README.md
+LICENSE
+.gitattributes

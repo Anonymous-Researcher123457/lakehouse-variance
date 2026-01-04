@@ -1,0 +1,49 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: core-site-config
+data:
+  core-site.xml: |
+    <configuration>
+    
+      <property>
+        <name>fs.defaultFS</name>
+        <value>abfss://<CONTAINER>@<STORAGE_ACCOUNT>.dfs.core.windows.net/</value>
+      </property>
+
+      <property>
+        <name>fs.abfs.impl</name>
+        <value>org.apache.hadoop.fs.azurebfs.AzureBlobFileSystem</value>
+      </property>
+    
+      <property>
+        <name>fs.abfss.impl</name>
+        <value>org.apache.hadoop.fs.azurebfs.SecureAzureBlobFileSystem</value>
+      </property>
+    
+      <property>
+        <name>fs.AbstractFileSystem.abfs.impl</name>
+        <value>org.apache.hadoop.fs.azurebfs.Abfs</value>
+      </property>
+    
+      <property>
+        <name>fs.AbstractFileSystem.abfss.impl</name>
+        <value>org.apache.hadoop.fs.azurebfs.Abfss</value>
+      </property>
+
+      <property>
+        <name>hive.azure.abfs-storage-account</name>
+        <value> <STORAGE_ACCOUNT>.dfs.core.windows.net </value>
+      </property>
+    
+      <property>
+        <name>hive.azure.abfs-access-key</name>
+        <value> <ABFS_ACCESS_KEY> </value>
+      </property>
+    
+      <property>
+        <name>fs.azure.account.key.<STORAGE_ACCOUNT>.dfs.core.windows.net</name>
+        <value> <ABFS_ACCESS_KEY> </value>
+      </property>
+
+    </configuration>

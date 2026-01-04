@@ -1,0 +1,113 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: cs-inmem-als-ds
+spec:
+  selector:
+    matchLabels: { app: cs-inmem-als }
+  template:
+    metadata:
+      labels: { app: cs-inmem-als }
+    spec:
+      restartPolicy: Always
+      tolerations:
+        - key: "node"
+          operator: "Equal"
+          value: "trino"
+          effect: "NoSchedule"
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: pod
+                operator: In
+                values: ["worker","hive","coord"]
+
+      volumes:
+        - name: movielens
+          emptyDir: {}
+      initContainers:
+        - name: copy-dataset
+          image: cloudsuite/movielens-dataset
+          command: ["/bin/bash","-lc"]
+          args: ["cp -a /data/* /movielens/"]
+          volumeMounts: [{ name: movielens, mountPath: /movielens }]
+
+      containers:
+        - name: runner
+          image: cloudsuite/in-memory-analytics
+          command: ["/bin/bash","-lc"]
+          args:
+            - |
+              set -euo pipefail
+
+              # ---------- CPU sizing ----------
+              THREAD_TARGET_PCT="${TARGET_PCT:-20}"      # % of node CPUs to use
+              CORES="$(nproc)"
+              THREADS=$(( (CORES*THREAD_TARGET_PCT + 99)/100 ))
+              [ "$THREADS" -lt 1 ] && THREADS=1
+
+              # ---------- Memory sizing ----------
+              # Total host memory (kB) -> MB
+              TOTAL_KB="$(awk '/MemTotal:/ {print $2}' /proc/meminfo)"
+              TOTAL_MB=$(( TOTAL_KB / 1024 ))
+
+              MEM_TARGET_PCT="${MEM_TARGET_PCT:-20}"     # % of node RAM for Spark
+              BUDGET_MB=$(( TOTAL_MB * MEM_TARGET_PCT / 100 ))
+
+              # Model: ~(MEM_PER_THREAD_MB * # of threads) + JVM overhead 
+              MEM_PER_THREAD_MB="${MEM_PER_THREAD_MB:-3500}"   # Assumption based on observation 3.5 GB consumed per thread
+              JVM_OVERHEAD_MB="${JVM_OVERHEAD_MB:-1024}"       # Non heap mem
+              SAFETY_MARGIN_MB="${SAFETY_MARGIN_MB:-1024}"     # Remaining free for node
+
+              # Cap budget to leave a margin
+              if [ $BUDGET_MB -gt $((TOTAL_MB - SAFETY_MARGIN_MB)) ]; then
+                BUDGET_MB=$((TOTAL_MB - SAFETY_MARGIN_MB))
+              fi
+              [ "$BUDGET_MB" -lt 1024 ] && BUDGET_MB=1024
+
+              # Max threads that fits the memory budget
+              MAX_THREADS=$(( (BUDGET_MB - JVM_OVERHEAD_MB) / MEM_PER_THREAD_MB ))
+              [ "$MAX_THREADS" -lt 1 ] && MAX_THREADS=1
+              if [ "$THREADS" -gt "$MAX_THREADS" ]; then
+                THREADS="$MAX_THREADS"
+              fi
+
+              # Driver heap = threads * per-thread (but never exceed budget - overhead)
+              DRIVER_MB=$(( THREADS * MEM_PER_THREAD_MB ))
+              MAX_DRIVER_MB=$(( BUDGET_MB - JVM_OVERHEAD_MB ))
+              if [ "$DRIVER_MB" -gt "$MAX_DRIVER_MB" ]; then
+                DRIVER_MB="$MAX_DRIVER_MB"
+              fi
+              [ "$DRIVER_MB" -lt 1024 ] && DRIVER_MB=1024
+
+              # Derive a conservative maxResultSize
+              MAX_RES_MB=$(( DRIVER_MB / 2 ))
+              [ "$MAX_RES_MB" -lt 512 ] && MAX_RES_MB=512
+
+              DATASET="${DATASET:-/data/ml-latest}"
+              RATINGS="${RATINGS:-/data/myratings.csv}"
+              SLEEP_SECONDS="${SLEEP_SECONDS:-60}"
+
+              while true; do
+                /root/run_benchmark.sh "$DATASET" "$RATINGS" \
+                  --master "local[$THREADS]" \
+                  --conf "spark.driver.memory=${DRIVER_MB}m" \
+                  --conf "spark.driver.maxResultSize=${MAX_RES_MB}m" \
+                  --conf "spark.memory.fraction=${SPARK_MEM_FRACTION:-0.6}" \
+                  --conf "spark.memory.storageFraction=${SPARK_STORAGE_FRACTION:-0.3}" \
+                  --conf "spark.executor.memory=${DRIVER_MB}m" \
+                  --conf "spark.executor.memoryOverhead=${JVM_OVERHEAD_MB}m" \
+                  --conf "spark.driver.extraJavaOptions=${SPARK_JAVA_OPTS:--XX:+UseG1GC}" \
+                  || true
+                sleep "$SLEEP_SECONDS"
+              done
+          volumeMounts: [{ name: movielens, mountPath: /data }]
+          env:
+            - { name: TARGET_PCT,            value: "50" }    # % of CPUs
+            - { name: MEM_TARGET_PCT,        value: "50" }    # % of RAM
+            - { name: MEM_PER_THREAD_MB,     value: "3500" }  # model memory per thread
+            - { name: JVM_OVERHEAD_MB,       value: "1024" }
+            - { name: SAFETY_MARGIN_MB,      value: "1024" }
+            - { name: SLEEP_SECONDS,         value: "60" }

@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: trino-worker-config
+data:
+  config.properties: |
+    http-server.process-forwarded=true
+    #single node install config
+    coordinator=false
+    node-scheduler.include-coordinator=false
+    http-server.http.port=8080
+    discovery.uri=http://trino-service:8080
+    node.environment=test
+    spiller-spill-path=/mnt/iceberg/spill
+    spill-enabled=true
+    query.remote-task.max-error-duration=5m

@@ -1,0 +1,55 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: trino-coord-pod
+  labels:
+    pod: trino-pod
+spec:
+  nodeSelector:
+    pod: "coord"
+    role: "coordinator"
+  serviceAccountName: trino
+  priority: 0
+  schedulerName: default-scheduler
+  enableServiceLinks: true
+  terminationGracePeriodSeconds: 30
+  preemptionPolicy: PreemptLowerPriority
+  securityContext:
+    seLinuxOptions:
+      level: 's0:c29,c14'
+    runAsUser: 0
+  containers:
+    - name: app-container
+      ports:
+        - containerPort: 8080
+        - containerPort: 9100
+        - containerPort: 9189
+        - containerPort: 9090
+          protocol: TCP
+      image: <YOUR_TRINO_IMAGE:TAG>
+      command: ["/bin/sh", "-c", "cd /lib/trino/bin && ./run-trino"]
+      volumeMounts:
+        - name: trino-iceberg-config
+          mountPath: /etc/trino/catalog/iceberg.properties
+          subPath: iceberg.properties
+        - name: trino-coord-config
+          mountPath: /etc/trino/config.properties
+          subPath: config.properties
+        - name: trino-jvm-config
+          mountPath: /etc/trino/jvm.config
+          subPath: jvm.config
+      securityContext:
+        capabilities:
+          drop:
+            - MKNOD
+      imagePullPolicy: IfNotPresent
+  volumes:
+    - name: trino-iceberg-config
+      configMap:
+        name: trino-iceberg-config
+    - name: trino-coord-config
+      configMap:
+        name: trino-coord-config
+    - name: trino-jvm-config
+      configMap:
+        name: trino-jvm-config
