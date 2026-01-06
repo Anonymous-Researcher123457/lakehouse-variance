@@ -1,0 +1,70 @@
+{
+  "customer": {
+    "c_custkey": "INTEGER",
+    "c_name": "VARCHAR",
+    "c_address": "VARCHAR",
+    "c_city": "VARCHAR",
+    "c_nation": "VARCHAR",
+    "c_region": "VARCHAR",
+    "c_phone": "VARCHAR",
+    "c_mktsegment": "VARCHAR"
+  },
+  "part": {
+    "p_partkey": "INTEGER",
+    "p_name": "VARCHAR",
+    "p_mfgr": "VARCHAR",
+    "p_category": "VARCHAR",
+    "p_brand1": "VARCHAR",
+    "p_color": "VARCHAR",
+    "p_type": "VARCHAR",
+    "p_size": "INTEGER",
+    "p_container": "VARCHAR"
+  },
+  "supplier": {
+    "s_suppkey": "INTEGER",
+    "s_name": "VARCHAR",
+    "s_address": "VARCHAR",
+    "s_city": "VARCHAR",
+    "s_nation": "VARCHAR",
+    "s_region": "VARCHAR",
+    "s_phone": "VARCHAR"
+  },
+  "lineorder": {
+    "lo_orderkey": "INTEGER",
+    "lo_linenumber": "INTEGER",
+    "lo_custkey": "INTEGER",
+    "lo_partkey": "INTEGER",
+    "lo_suppkey": "INTEGER",
+    "lo_orderdate": "INTEGER",
+    "lo_orderpriority": "VARCHAR",
+    "lo_shippriority": "INTEGER",
+    "lo_quantity": "INTEGER",
+    "lo_extendedprice": "INTEGER",
+    "lo_ordertotalprice": "INTEGER",
+    "lo_discount": "INTEGER",
+    "lo_revenue": "INTEGER",
+    "lo_supplycost": "INTEGER",
+    "lo_tax": "INTEGER",
+    "lo_commitdate": "INTEGER",
+    "lo_shipmode": "VARCHAR"
+  },
+  "dim_date": {
+    "d_datekey": "VARCHAR",
+    "d_date": "VARCHAR",
+    "d_dayofweek": "VARCHAR",
+    "d_month": "VARCHAR",
+    "d_year": "VARCHAR",
+    "d_yearmonthnum": "VARCHAR",
+    "d_yearmonth": "VARCHAR",
+    "d_daynuminweek": "VARCHAR",
+    "d_daynuminmonth": "VARCHAR",
+    "d_daynuminyear": "VARCHAR",
+    "d_monthnuminyear": "VARCHAR",
+    "d_weeknuminyear": "VARCHAR",
+    "d_sellingseason": "VARCHAR",
+    "d_lastdayinweekfl": "VARCHAR",
+    "d_lastdayinmonthfl": "VARCHAR",
+    "d_holidayfl": "VARCHAR",
+    "d_weekdayfl": "VARCHAR"
+  }
+}
