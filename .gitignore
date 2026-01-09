@@ -24,3 +24,8 @@ venv/
 **/lakehouse_*_*/
 models/RF/Model/embed_tokens.pt
 *.pt
+
+# Large model weights
+models/RF/Model/embed_tokens.pt
+*.pt
+*.pth
