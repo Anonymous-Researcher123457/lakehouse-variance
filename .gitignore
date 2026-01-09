@@ -29,3 +29,4 @@ models/RF/Model/embed_tokens.pt
 models/RF/Model/embed_tokens.pt
 *.pt
 *.pth
+traces/**/lakehouse_*.zip
