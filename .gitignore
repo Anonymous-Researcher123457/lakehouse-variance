@@ -22,3 +22,5 @@ venv/
 # Raw Traces
 # =========================
 **/lakehouse_*_*/
+models/RF/Model/embed_tokens.pt
+*.pt
