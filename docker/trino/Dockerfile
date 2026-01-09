@@ -8,7 +8,7 @@ RUN apk add --no-cache curl tar && \
 
 # Stage 1: Install required utilities
 FROM debian:bullseye AS sysstatbuilder
-RUN apt-get update && apt-get install -y sysstat && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y sysstat && rm -RF /var/lib/apt/lists/*
 
 
 
